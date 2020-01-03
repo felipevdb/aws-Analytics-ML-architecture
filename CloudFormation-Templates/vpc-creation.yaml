@@ -11,6 +11,8 @@ Metadata:
           - CIDRVpc
           - CIDRPublicA
           - CIDRPrivateA
+          - CIDRPublicB
+          - CIDRPrivateB
 Parameters:
   VPCName:
     Type: String
@@ -31,6 +33,18 @@ Parameters:
   CIDRPrivateA:
     Type: String
     Default: 172.16.1.0/24
+    Description: VPC CIDR Subnet Public-B
+    AllowedPattern: '(\d{1,3})[.](\d{1,3})[.](\d{1,3})[.](\d{1,3})[/](\d{1,2})'
+    ConstraintDescription: Must be a CIDR range a.b.c.d/x.
+  CIDRPublicB:
+    Type: String
+    Default: 172.16.2.0/24
+    Description: VPC CIDR Subnet Public-A
+    AllowedPattern: '(\d{1,3})[.](\d{1,3})[.](\d{1,3})[.](\d{1,3})[/](\d{1,2})'
+    ConstraintDescription: Must be a CIDR range a.b.c.d/x.
+  CIDRPrivateB:
+    Type: String
+    Default: 172.16.3.0/24
     Description: VPC CIDR Subnet Public-B
     AllowedPattern: '(\d{1,3})[.](\d{1,3})[.](\d{1,3})[.](\d{1,3})[/](\d{1,2})'
     ConstraintDescription: Must be a CIDR range a.b.c.d/x.
@@ -82,7 +96,7 @@ Resources:
       RouteTableId: !Ref RouteTablePublic
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref IGW
-  SubnetPublic:
+  SubnetPublicA:
     Type: 'AWS::EC2::Subnet'
     Properties:
       VpcId: !Ref VPC
@@ -93,23 +107,55 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: 'Public subnet'
+          Value: 'Public subnet A'
         - Key: VPC
           Value: !Ref VPCName
         - Key: Company
           Value: AnyCompany
-    SubnetPrivate:
+  SubnetPublicB:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref CIDRPublicB
+      AvailabilityZone: !Select
+        - '1'
+        - !GetAZs ''
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: 'Public subnet B'
+        - Key: VPC
+          Value: !Ref VPCName
+        - Key: Company
+          Value: AnyCompany
+  SubnetPrivateA:
     Type: 'AWS::EC2::Subnet'
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Ref CIDRPrivateA
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: 'Private Subnet A'
+        - Key: VPC
+          Value: !Ref VPCName
+        - Key: Company
+          Value: AnyCompany
+  SubnetPrivateB:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref CIDRPrivateB
       AvailabilityZone: !Select
         - '1'
         - !GetAZs ''
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: 'Private Subnet'
+          Value: 'Private Subnet B'
         - Key: VPC
           Value: !Ref VPCName
         - Key: Company
@@ -117,9 +163,29 @@ Resources:
   RouteTableAssociationPubA:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
     Properties:
-      SubnetId: !Ref SubnetPublic
+      SubnetId: !Ref SubnetPublicA
       RouteTableId: !Ref RouteTablePublic
+  RouteTableAssociationPubB:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetPublicB
+      RouteTableId: !Ref RouteTablePublic
+  MySQLDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupDescription: 'Database subnet group for the MySQL Instance'
+      DBSubnetGroupName: 'MySQLDBSubnetGroup'
+      SubnetIds: 
+        - !Ref SubnetPublicA
+        - !Ref SubnetPublicB
+      Tags: 
+        - Key: Company
+          Value: AnyCompany
+
 Outputs:
   VPC:
     Description: VPC id
     Value: !Ref VPC
+  MySQLDBSubnetGroup:
+    Description: DB Subnet Group
+    Value: !Ref MySQLDBSubnetGroup

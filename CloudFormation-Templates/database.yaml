@@ -1,4 +1,4 @@
-Description: Template to create a MySQL Instance with RDS and a S3 Bucket
+Description: Template to create a MySQL Instance with RDS
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -15,7 +15,7 @@ Parameters:
   DataBaseName:
     Type: String
     Default: ecommerceTESTING
-    Description: 'Database name. Default: ecommerce'
+    Description: 'Database name. Default: ecommerceTESTING'
   StorageSize:
     Type: String
     Default: "20"
@@ -58,6 +58,7 @@ Resources:
       CopyTagsToSnapshot: true
       DeletionProtection: true
       DBParameterGroupName: !Ref DBGroup
+      DBSubnetGroupName: 'MySQLDBSubnetGroup'
       Tags:
         - Key: Name
           Value: !Ref DataBaseName
