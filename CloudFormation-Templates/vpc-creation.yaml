@@ -1,0 +1,125 @@
+Description: Template to create VPC for big data application
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Network Configuration"
+        Parameters:
+          - VPCName
+          - CIDRVpc
+          - CIDRPublicA
+          - CIDRPrivateA
+Parameters:
+  VPCName:
+    Type: String
+    Default: VPC-Custom
+    Description: 'VPC name. Default: VPC-Custom'
+  CIDRVpc:
+    Type: String
+    Default: 172.16.0.0/16
+    Description: VPC CIDR
+    AllowedPattern: '(\d{1,3})[.](\d{1,3})[.](\d{1,3})[.](\d{1,3})[/](\d{1,2})'
+    ConstraintDescription: Must be a CIDR range a.b.c.d/x.
+  CIDRPublicA:
+    Type: String
+    Default: 172.16.0.0/24
+    Description: VPC CIDR Subnet Public-A
+    AllowedPattern: '(\d{1,3})[.](\d{1,3})[.](\d{1,3})[.](\d{1,3})[/](\d{1,2})'
+    ConstraintDescription: Must be a CIDR range a.b.c.d/x.
+  CIDRPrivateA:
+    Type: String
+    Default: 172.16.1.0/24
+    Description: VPC CIDR Subnet Public-B
+    AllowedPattern: '(\d{1,3})[.](\d{1,3})[.](\d{1,3})[.](\d{1,3})[/](\d{1,2})'
+    ConstraintDescription: Must be a CIDR range a.b.c.d/x.
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref CIDRVpc
+      EnableDnsSupport: false
+      EnableDnsHostnames: false
+      Tags:
+        - Key: Name
+          Value: !Ref VPCName
+        - Key: Company
+          Value: AnyCompany
+  IGW:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join
+            - ''
+            - - IGW-
+              - !Ref VPCName
+        - Key: VPC
+          Value: !Ref VPCName
+        - Key: Company
+          Value: AnyCompany
+  IGWAttach:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref IGW
+  RouteTablePublic:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: Route-Table-Public
+        - Key: VPC
+          Value: !Ref VPCName
+        - Key: Company
+          Value: AnyCompany
+  RouteIGW:
+    Type: 'AWS::EC2::Route'
+    DependsOn: IGW
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref IGW
+  SubnetPublic:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref CIDRPublicA
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: 'Public subnet'
+        - Key: VPC
+          Value: !Ref VPCName
+        - Key: Company
+          Value: AnyCompany
+    SubnetPrivate:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref CIDRPrivateA
+      AvailabilityZone: !Select
+        - '1'
+        - !GetAZs ''
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: 'Private Subnet'
+        - Key: VPC
+          Value: !Ref VPCName
+        - Key: Company
+          Value: AnyCompany
+  RouteTableAssociationPubA:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetPublic
+      RouteTableId: !Ref RouteTablePublic
+Outputs:
+  VPC:
+    Description: VPC id
+    Value: !Ref VPC
