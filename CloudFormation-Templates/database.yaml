@@ -1,0 +1,69 @@
+Description: Template to create a MySQL Instance with RDS and a S3 Bucket
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "RDS Configuration"
+        Parameters:
+          - DataBaseName
+          - StorageSize
+          - DBUser
+          - DBPassword
+Parameters:
+  DataBaseName:
+    Type: String
+    Default: ecommerceTESTING
+    Description: 'Database name. Default: ecommerce'
+  StorageSize:
+    Type: String
+    Default: "20"
+    Description: 'Database name. Default: 20'
+  DBUser:
+    Type: String
+    Default: "admin"
+    Description: 'Database username. Default: admin'
+  DBPassword:
+    Type: String
+    Default: "ygheqwer890H!M"
+    Description: 'Database username. Default: ygheqwer890H!M'
+Resources:
+  DBGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: 'Parameter Group for the instance'
+      Family: 'mysql5.7'
+      Parameters:
+        binlog_format: "ROW"
+      Tags:
+        - Key: Name
+          Value: MySQLGroup
+        - Key: Company
+          Value: AnyCompany
+  RDS:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBName: !Ref 'DataBaseName'
+      DBInstanceIdentifier: !Ref 'DataBaseName'
+      Engine: MySQL
+      EngineVersion: "5.7.22"
+      DBInstanceClass: db.t2.micro
+      MultiAZ: false
+      StorageType: gp2
+      AllocatedStorage: !Ref StorageSize
+      MasterUserPassword: !Ref DBPassword
+      MasterUsername: !Ref DBUser
+      BackupRetentionPeriod: 1
+      CopyTagsToSnapshot: true
+      DeletionProtection: true
+      DBParameterGroupName: !Ref DBGroup
+      Tags:
+        - Key: Name
+          Value: !Ref DataBaseName
+        - Key: Company
+          Value: AnyCompany
+Outputs:
+  VPC:
+    Description: Database Id
+    Value: !Ref DataBaseName
