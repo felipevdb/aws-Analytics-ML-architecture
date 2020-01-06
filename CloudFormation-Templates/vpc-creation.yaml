@@ -186,6 +186,18 @@ Outputs:
   VPC:
     Description: VPC id
     Value: !Ref VPC
+    Export:
+      Name: VPC
   MySQLDBSubnetGroup:
     Description: DB Subnet Group
     Value: !Ref MySQLDBSubnetGroup
+  SubnetPublicA:
+    Description: 'Subnet Publica A Id'
+    Value: !Ref SubnetPublicA
+    Export:
+      Name: SubnetPublicA
+  SubnetPublicB:
+    Description: 'Subnet Publica B Id'
+    Value: !Ref SubnetPublicB
+    Export:
+      Name: SubnetPublicB

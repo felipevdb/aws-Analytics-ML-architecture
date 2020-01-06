@@ -65,6 +65,11 @@ Resources:
         - Key: Company
           Value: AnyCompany
 Outputs:
-  VPC:
-    Description: Database Id
-    Value: !Ref DataBaseName
+  RdsDB:
+    Description: Rds Database
+    Value: !Ref RDS
+  RDSEndpoint:
+    Description: 'RDS database Endpoint'
+    Value: !GetAtt RDS.Endpoint.Address
+    Export:
+      Name: RDSEndpoint
