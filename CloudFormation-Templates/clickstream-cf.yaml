@@ -1,0 +1,120 @@
+Description: Template to Ec2 Instance sending clickstream data to a kinesis firehose.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "ClickStream Configuration"
+Resources:
+  GlueDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput: 
+        Name: ecommerce-glue-db
+  GlueTable:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: !Ref GlueDatabase
+      TableInput:
+        Name: ecommerce-clickstream-tb
+        StorageDescriptor:
+          Columns:
+            - Name: 'customer_id'
+              Type: 'string'
+            - Name: 'device_id'
+              Type: 'string'
+            - Name: 'product_category_name'
+              Type: 'string'
+            - Name: 'location'
+              Type: 'string'
+            - Name: 'timestamp'
+              Type: 'string'
+          Location: 
+            !Join 
+                    - ''
+                    - - !ImportValue S3BucketARN
+                      - '/clickstream-logs'
+          Parameters:
+            Classification: 'parquet'
+  DeliveryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref 'AWS::AccountId'      
+  DeliveryPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: firehose_delivery_policy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+                - lambda:InvokeFunction",
+                - lambda:GetFunctionConfiguration
+            Resource: 'arn:aws:lambda:us-east-1:544464437166:function:%FIREHOSE_DEFAULT_FUNCTION%:%FIREHOSE_DEFAULT_VERSION%'
+          - Effect: Allow
+            Action:
+              - 'glue:GetTable'
+              - 'glue:GetTableVersion'
+              - 'glue:GetTableVersions'
+            Resource:
+              - '*'
+          - Effect: Allow
+            Action:
+              - 's3:AbortMultipartUpload'
+              - 's3:GetBucketLocation'
+              - 's3:GetObject'
+              - 's3:ListBucket'
+              - 's3:ListBucketMultipartUploads'
+              - 's3:PutObject'
+            Resource:
+              - !ImportValue S3BucketARN
+              - !Join 
+                    - ''
+                    - - !ImportValue S3BucketARN
+                      - '/*'
+      Roles:
+        - !Ref DeliveryRole
+  KinesisFirehose:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: 'clickstream-fh'
+      DeliveryStreamType: 'DirectPut'
+      ExtendedS3DestinationConfiguration:
+        BucketARN: !ImportValue S3BucketARN
+        BufferingHints:
+          IntervalInSeconds: 300
+          SizeInMBs: 64
+        CompressionFormat: UNCOMPRESSED
+        Prefix: clickstream-logs/
+        RoleARN: !GetAtt DeliveryRole.Arn
+        DataFormatConversionConfiguration:
+          Enabled: true
+          InputFormatConfiguration:
+            Deserializer: 
+              OpenXJsonSerDe:
+                CaseInsensitive: false
+          OutputFormatConfiguration:
+            Serializer: 
+              ParquetSerDe:
+                Compression:  UNCOMPRESSED
+          SchemaConfiguration:
+            CatalogId: !Ref AWS::AccountId
+            DatabaseName: !Ref GlueDatabase
+            Region: us-east-1
+            RoleARN: !GetAtt DeliveryRole.Arn
+            TableName: !Ref GlueTable
+            VersionId: LATEST
