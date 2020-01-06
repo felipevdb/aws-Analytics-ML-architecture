@@ -16,7 +16,7 @@ Parameters:
   S3BucketName:
     Type: String
     Default: 'bucket name'
-    Desciption: 'Bucket Name'
+    Description: 'Bucket Name'
   S3BucketARN:
     Type: String
     Default: 'bucket ARN'
@@ -41,13 +41,13 @@ Resources:
   DMSVpcRole: 
       Type: 'AWS::IAM::Role'
       Properties :
-        RoleName : 'dms-vpc-role'
+        RoleName : 'dms-vpc-role-custom'
         AssumeRolePolicyDocument: 
-          Version : '2020-01-06'
+          Version : "2012-10-17"
           Statement :
             - Effect: Allow
               Principal:
-              Service:  
+                Service:  
                 - dms.amazonaws.com
               Action: 'sts:AssumeRole'
         ManagedPolicyArns : 
@@ -61,28 +61,29 @@ Resources:
     Properties:
       RoleName: dms-s3-target-role
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-            Service:
-              - dms.amazonaws.com
+              Service:
+               - dms.amazonaws.com
             Action:
             - sts:AssumeRole
       Path: "/"
       Policies:
         - PolicyName: S3AccessForDMSPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - s3:PutObject
                   - s3:DeleteObject
                 Resource:
-                  !Join
-                    - !Ref S3BucketARN
-                    - '/*'
+                  !Join 
+                    - ''
+                    - - !Ref S3BucketARN
+                      - '/*'
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource:
@@ -100,7 +101,7 @@ Resources:
       PubliclyAccessible : false
       ReplicationInstanceClass: dms.t2.micro
       EngineVersion: '3.1.4'
-      ReplicationInstanceIdentifier: aurora-s3-repinstance-sampledb
+      ReplicationInstanceIdentifier: MySQL-s3-repinstance
       ReplicationSubnetGroupIdentifier:
         !Ref DMSReplicationSubnetGroup
   MySQLSourceEndpoint:
@@ -126,7 +127,7 @@ Resources:
   DMSReplicationTask:
     Type: AWS::DMS::ReplicationTask
     Properties:
-        MigrationType: "full-load-and-cdc",
+        MigrationType: "full-load-and-cdc"
         ReplicationInstanceArn: !Ref DMSReplicationInstance
         SourceEndpointArn: !Ref MySQLSourceEndpoint
         TableMappings: "{\"rules\":[{\"rule-type\":\"selection\",\"rule-id\":\"1\",\"rule-name\":\"1\",\"object-locator\":{\"schema-name\":\"ecommerce\",\"table-name\":\"%\"},\"rule-action\":\"include\",\"filters\":[]}]}"
