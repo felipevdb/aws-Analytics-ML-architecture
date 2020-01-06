@@ -1,4 +1,4 @@
-Description: Template to create a MySQL Instance with RDS
+Description: Template to create a MySQL Instance with RDS and a S3 bucket
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -44,7 +44,7 @@ Resources:
   RDS:
     Type: 'AWS::RDS::DBInstance'
     Properties:
-      DBName: !Ref 'DataBaseName'
+      DBName: 'ECommerce'
       DBInstanceIdentifier: !Ref 'DataBaseName'
       Engine: MySQL
       EngineVersion: "5.7.22"
@@ -56,14 +56,19 @@ Resources:
       MasterUsername: !Ref DBUser
       BackupRetentionPeriod: 1
       CopyTagsToSnapshot: true
-      DeletionProtection: true
+      DeletionProtection: false
       DBParameterGroupName: !Ref DBGroup
       DBSubnetGroupName: 'MySQLDBSubnetGroup'
+      PubliclyAccessible: true
       Tags:
         - Key: Name
           Value: !Ref DataBaseName
         - Key: Company
           Value: AnyCompany
+  S3Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        AccessControl: Private
 Outputs:
   RdsDB:
     Description: Rds Database
@@ -73,3 +78,17 @@ Outputs:
     Value: !GetAtt RDS.Endpoint.Address
     Export:
       Name: RDSEndpoint
+  S3BucketARN:
+    Description: 'RDS database Endpoint'
+    Value: !GetAtt S3Bucket.Arn 
+    Export:
+      Name: S3BucketARN
+  S3BucketName:
+    Description: 'RDS database Endpoint'
+    Value: !Ref S3Bucket
+    Export:
+      Name: S3BucketName
+  JDBCConnectionString:
+    Description: 'RDS ConnectionString'
+    Value: !Join ['', ['jdbc:mysql://', !GetAtt [RDS, Endpoint.Address], ':',
+        !GetAtt [RDS, Endpoint.Port], /, !Ref 'DataBaseName']]
