@@ -53,8 +53,8 @@ Resources:
     Type: 'AWS::EC2::VPC'
     Properties:
       CidrBlock: !Ref CIDRVpc
-      EnableDnsSupport: false
-      EnableDnsHostnames: false
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
       Tags:
         - Key: Name
           Value: !Ref VPCName
@@ -181,7 +181,6 @@ Resources:
       Tags: 
         - Key: Company
           Value: AnyCompany
-
 Outputs:
   VPC:
     Description: VPC id

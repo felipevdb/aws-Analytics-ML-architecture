@@ -1,26 +1,16 @@
-Description: Template to create a DMS task to transfer MySQL data to S3
+Description: Template to create a DMS tasks to transfer MySQL data to S3
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       -
         Label:
-          default: "RDS Configuration"
+          default: "DMS Configuration"
         Parameters:
-          - S3BucketName
-          - S3BucketARN
           - DBUser
           - DBPassword
           - MySQLEndPointName
           - S3EndPointName
 Parameters:
-  S3BucketName:
-    Type: String
-    Default: 'bucket name'
-    Description: 'Bucket Name'
-  S3BucketARN:
-    Type: String
-    Default: 'bucket ARN'
-    Description: 'Bucket ARN'
   DBUser:
     Type: String
     Default: "admin"
@@ -82,12 +72,12 @@ Resources:
                 Resource:
                   !Join 
                     - ''
-                    - - !Ref S3BucketARN
+                    - - !ImportValue S3BucketARN
                       - '/*'
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource:
-                  - !Ref S3BucketARN
+                  - !ImportValue S3BucketARN
   DMSReplicationSubnetGroup:
     Type : AWS::DMS::ReplicationSubnetGroup
     Properties:
@@ -122,7 +112,7 @@ Resources:
         EndpointIdentifier: !Ref S3EndPointName
         ExtraConnectionAttributes: bucketFolder=mysql-database
         S3Settings:
-          BucketName: !Ref S3BucketName
+          BucketName: !ImportValue S3BucketName
           ServiceAccessRoleArn: !GetAtt S3TargetDMSRole.Arn
   DMSReplicationTask:
     Type: AWS::DMS::ReplicationTask

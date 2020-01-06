@@ -7,19 +7,19 @@ Metadata:
         Label:
           default: "RDS Configuration"
         Parameters:
-          - DataBaseName
+          - InstanceIdentifier
           - StorageSize
           - DBUser
           - DBPassword
 Parameters:
-  DataBaseName:
+  InstanceIdentifier:
     Type: String
     Default: ecommerceTESTING
-    Description: 'Database name. Default: ecommerceTESTING'
+    Description: 'Instance name. Default: ecommerceTESTING'
   StorageSize:
     Type: String
     Default: "20"
-    Description: 'Database name. Default: 20'
+    Description: 'Database name (Gb). Default: 20'
   DBUser:
     Type: String
     Default: "admin"
@@ -41,11 +41,27 @@ Resources:
           Value: MySQLGroup
         - Key: Company
           Value: AnyCompany
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Public Security Group for the RDS Instance
+      VpcId: !ImportValue VPC
+      GroupName: 'RDS Security Group'
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 3306
+        ToPort: 3306
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: 0.0.0.0/0
   RDS:
     Type: 'AWS::RDS::DBInstance'
     Properties:
       DBName: 'ECommerce'
-      DBInstanceIdentifier: !Ref 'DataBaseName'
+      DBInstanceIdentifier: !Ref InstanceIdentifier
       Engine: MySQL
       EngineVersion: "5.7.22"
       DBInstanceClass: db.t2.micro
@@ -60,9 +76,11 @@ Resources:
       DBParameterGroupName: !Ref DBGroup
       DBSubnetGroupName: 'MySQLDBSubnetGroup'
       PubliclyAccessible: true
+      VPCSecurityGroups:
+        - !GetAtt DBSecurityGroup.GroupId
       Tags:
         - Key: Name
-          Value: !Ref DataBaseName
+          Value: !Ref InstanceIdentifier
         - Key: Company
           Value: AnyCompany
   S3Bucket:
@@ -91,4 +109,6 @@ Outputs:
   JDBCConnectionString:
     Description: 'RDS ConnectionString'
     Value: !Join ['', ['jdbc:mysql://', !GetAtt [RDS, Endpoint.Address], ':',
-        !GetAtt [RDS, Endpoint.Port], /, !Ref 'DataBaseName']]
+        !GetAtt [RDS, Endpoint.Port], /, 'ECommerce']]
+    Export:
+      Name: JDBCConnectionString
