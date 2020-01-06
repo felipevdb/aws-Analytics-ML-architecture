@@ -1,0 +1,138 @@
+Description: Template to create a DMS task to transfer MySQL data to S3
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "RDS Configuration"
+        Parameters:
+          - S3BucketName
+          - S3BucketARN
+          - DBUser
+          - DBPassword
+          - MySQLEndPointName
+          - S3EndPointName
+Parameters:
+  S3BucketName:
+    Type: String
+    Default: 'bucket name'
+    Desciption: 'Bucket Name'
+  S3BucketARN:
+    Type: String
+    Default: 'bucket ARN'
+    Description: 'Bucket ARN'
+  DBUser:
+    Type: String
+    Default: "admin"
+    Description: 'Database username. Default: admin'
+  DBPassword:
+    Type: String
+    Default: "ygheqwer890H!M"
+    Description: 'Database username. Default: ygheqwer890H!M'
+  MySQLEndPointName:
+    Type: String
+    Default: "MySQLSourceEndpoint"
+    Description: 'MySQL Endpoint Identifier. Default: MySQLSourceEndpoint'
+  S3EndPointName:
+    Type: String
+    Default: "S3TargetEndpoint"
+    Description: 'S3 Endpoint Identifier. Default: S3TargetEndpoint'
+Resources:
+  DMSVpcRole: 
+      Type: 'AWS::IAM::Role'
+      Properties :
+        RoleName : 'dms-vpc-role'
+        AssumeRolePolicyDocument: 
+          Version : '2020-01-06'
+          Statement :
+            - Effect: Allow
+              Principal:
+              Service:  
+                - dms.amazonaws.com
+              Action: 'sts:AssumeRole'
+        ManagedPolicyArns : 
+            - arn:aws:iam::aws:policy/service-role/AmazonDMSVPCManagementRole
+        Path : /
+        Tags:
+        - Key: Company
+          Value: AnyCompany
+  S3TargetDMSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: dms-s3-target-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+            Service:
+              - dms.amazonaws.com
+            Action:
+            - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: S3AccessForDMSPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource:
+                  !Join
+                    - !Ref S3BucketARN
+                    - '/*'
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource:
+                  - !Ref S3BucketARN
+  DMSReplicationSubnetGroup:
+    Type : AWS::DMS::ReplicationSubnetGroup
+    Properties:
+      ReplicationSubnetGroupDescription: Subnets available for DMS
+      SubnetIds: 
+        - !ImportValue SubnetPublicA
+        - !ImportValue SubnetPublicB
+  DMSReplicationInstance:
+    Type: AWS::DMS::ReplicationInstance
+    Properties:
+      PubliclyAccessible : false
+      ReplicationInstanceClass: dms.t2.micro
+      EngineVersion: '3.1.4'
+      ReplicationInstanceIdentifier: aurora-s3-repinstance-sampledb
+      ReplicationSubnetGroupIdentifier:
+        !Ref DMSReplicationSubnetGroup
+  MySQLSourceEndpoint:
+      Type: AWS::DMS::Endpoint
+      Properties:
+        EndpointType: source
+        EndpointIdentifier: !Ref MySQLEndPointName
+        EngineName : mysql
+        Password : !Ref DBPassword
+        Port: 3306
+        ServerName: !ImportValue RDSEndpoint
+        Username: !Ref DBUser
+  S3TargetEndpoint:
+      Type: AWS::DMS::Endpoint
+      Properties:
+        EndpointType: target
+        EngineName: S3
+        EndpointIdentifier: !Ref S3EndPointName
+        ExtraConnectionAttributes: bucketFolder=mysql-database
+        S3Settings:
+          BucketName: !Ref S3BucketName
+          ServiceAccessRoleArn: !GetAtt S3TargetDMSRole.Arn
+  DMSReplicationTask:
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+        MigrationType: "full-load-and-cdc",
+        ReplicationInstanceArn: !Ref DMSReplicationInstance
+        SourceEndpointArn: !Ref MySQLSourceEndpoint
+        TableMappings: "{\"rules\":[{\"rule-type\":\"selection\",\"rule-id\":\"1\",\"rule-name\":\"1\",\"object-locator\":{\"schema-name\":\"ecommerce\",\"table-name\":\"%\"},\"rule-action\":\"include\",\"filters\":[]}]}"
+        TargetEndpointArn : !Ref S3TargetEndpoint
+Outputs:
+  DMSReplicationTask:
+    Description: Replication Task
+    Value: !Ref DMSReplicationTask
+        
