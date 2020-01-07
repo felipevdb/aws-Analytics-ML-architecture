@@ -55,6 +55,7 @@ Resources:
                 'sts:ExternalId': !Ref 'AWS::AccountId'      
   DeliveryPolicy:
     Type: AWS::IAM::Policy
+    DependsOn: DeliveryRole
     Properties:
       PolicyName: firehose_delivery_policy
       PolicyDocument:
@@ -67,9 +68,10 @@ Resources:
             Resource: 'arn:aws:lambda:us-east-1:544464437166:function:%FIREHOSE_DEFAULT_FUNCTION%:%FIREHOSE_DEFAULT_VERSION%'
           - Effect: Allow
             Action:
-              - 'glue:GetTable'
-              - 'glue:GetTableVersion'
               - 'glue:GetTableVersions'
+              - 'glue:GetTable'
+              - 'glue:GetTables'
+              - 'glue:GetTableVersion'
             Resource:
               - '*'
           - Effect: Allow
@@ -90,6 +92,7 @@ Resources:
         - !Ref DeliveryRole
   KinesisFirehose:
     Type: AWS::KinesisFirehose::DeliveryStream
+    DependsOn: DeliveryPolicy
     Properties:
       DeliveryStreamName: 'clickstream-fh'
       DeliveryStreamType: 'DirectPut'
